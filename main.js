@@ -59,6 +59,7 @@ function createTray() {
     { label: '給爪爪咖啡 ☕', click: () => writeState('coffee') },
     { label: '拍拍手 👏', click: () => writeState('clap') },
     { label: '戴墨鏡 😎', click: () => writeState('sunglasses') },
+    { label: '回去打字 ⌨', click: () => writeState('tool_call') },
     { type: 'separator' },
     { label: '離開', click: () => app.quit() }
   ]);
