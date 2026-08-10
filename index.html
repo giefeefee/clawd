@@ -33,6 +33,7 @@ const ANIMS = {
   typing:    { src: 'assets/typing.png',    frameW: 320, frameH: 320, frames: 23, fps: 8, loop: true },
   clapping:  { src: 'assets/clapping.png',  frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false },
   latte:     { src: 'assets/latte.png',     frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1 },
+  sunglasses:{ src: 'assets/sunglasses.png', frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, hold: true },
 };
 
 const FALLBACK = 'typing';
@@ -66,6 +67,8 @@ const FADE_IN_SPEED = 0.05;
 function resolveAnimation() {
   const age = Date.now() - lastEvent.timestamp;
   const ev = lastEvent.event;
+
+  if (ev === 'sunglasses') return 'sunglasses';
 
   if (lastEvent.timestamp > consumedTimestamp) {
     if (ev === 'coffee') return 'latte';
@@ -156,7 +159,7 @@ function tick(now) {
         const repeats = anim_.repeats || ONESHOT_PLAY_COUNT;
         if (oneShotLoops >= repeats) {
           oneShotDone = true;
-          fadePhase = 'out';
+          if (!anim_.hold) fadePhase = 'out';
         } else {
           currentFrame = 0;
         }
