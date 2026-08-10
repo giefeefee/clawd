@@ -11,11 +11,11 @@
 
 | 事件 | 動畫 | 素材 |
 |------|------|------|
-| tool_call（工作中） | 打字 | assets/typing.png（23幀，320x320） |
-| stop（完成一階段） | 拍手 | assets/clapping.png（11幀，256x256） |
-| 全部完成 | 墨鏡 | 待畫 |
-| 閒置 | 耳機聽音樂 | 待畫 |
-| coffee（給咖啡） | 拿鐵 | 待匯出 |
+| tool_call（工作中） | 打字 | assets/typing.png（23幀，320x320，循環） |
+| stop / clap（完成） | 拍手 | assets/clapping.png（11幀，256x256，播2次淡出） |
+| sunglasses（全部完成） | 墨鏡 | assets/sunglasses.png（13幀，128x128，播完循環尾巴12次再淡出） |
+| idle / 閒置60秒 | 耳機聽音樂 | assets/headphones.png（6幀，128x128，循環，renderSize 108） |
+| coffee（給咖啡） | 拿鐵 | assets/latte.png（45幀，160x160，播1次淡出） |
 
 ## 隱私原則
 
@@ -27,14 +27,12 @@
 wscript launch_hidden.vbs
 ```
 
+## 系統匣選單
+
+自訂暗色底 BrowserWindow 彈出選單（tray-menu.html），不依賴 Windows 主題。左鍵或右鍵點擊系統匣圖示都會開啟。
+
 ## Hook 設定
 
-在 Claude Code 的 settings.json 加入：
-```json
-{
-  "hooks": {
-    "PreToolCall": [{ "type": "command", "command": "node \"<專案路徑>/hooks/clawd-state.js\" tool_call" }],
-    "Stop": [{ "type": "command", "command": "node \"<專案路徑>/hooks/clawd-state.js\" stop" }]
-  }
-}
-```
+在 `~/.claude/settings.json` 的 hooks 區塊：
+- `PostToolUse`（全工具）→ bash printf 寫 "tool_call" 到 `%LOCALAPPDATA%\clawd\state.json`
+- `Stop` → 寫 "stop" 到同一檔案
