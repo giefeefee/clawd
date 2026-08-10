@@ -51,19 +51,24 @@ let oneShotDone = false;
 
 // Track Claude Code activity
 let lastEvent = { event: 'none', timestamp: 0 };
-const IDLE_TIMEOUT = 60000;    // 60s no activity → idle
-const CLAP_DURATION = 5000;    // show clapping for 5s after "stop"
+const IDLE_TIMEOUT = 60000;
+
+// Fade transition state
+let opacity = 1;
+let fadePhase = 'none'; // 'none' | 'out' | 'in'
+const FADE_OUT_SPEED = 0.035; // ~0.5s at 60fps
+const FADE_IN_SPEED = 0.05;   // ~0.3s at 60fps
 
 function resolveAnimation() {
   const age = Date.now() - lastEvent.timestamp;
   const ev = lastEvent.event;
 
-  if (ev === 'coffee' && age < 10000) return 'clapping'; // placeholder until latte sprite
-  if (ev === 'clap' && age < CLAP_DURATION) return 'clapping';
-  if (ev === 'stop' && age < CLAP_DURATION) return 'clapping';
-  if (ev === 'tool_call' && age < IDLE_TIMEOUT) return 'typing';
-  if (ev === 'stop' && age < IDLE_TIMEOUT) return 'typing'; // back to typing after clap
-  // idle: use typing as placeholder until headphones sprite exists
+  if (!oneShotDone) {
+    if (ev === 'coffee' && age < 10000) return 'clapping';
+    if (ev === 'clap' && age < 10000) return 'clapping';
+    if (ev === 'stop' && age < 10000) return 'clapping';
+  }
+
   return 'typing';
 }
 
@@ -94,13 +99,34 @@ function startLoop() {
 }
 
 function tick(now) {
-  const target = resolveAnimation();
+  // Handle fade transitions
+  if (fadePhase === 'out') {
+    opacity -= FADE_OUT_SPEED;
+    if (opacity <= 0) {
+      opacity = 0;
+      fadePhase = 'in';
+      currentAnim = 'typing';
+      currentFrame = 0;
+      lastFrameTime = now;
+      oneShotDone = false;
+    }
+  } else if (fadePhase === 'in') {
+    opacity += FADE_IN_SPEED;
+    if (opacity >= 1) {
+      opacity = 1;
+      fadePhase = 'none';
+    }
+  }
 
-  if (target !== currentAnim) {
-    currentAnim = target;
-    currentFrame = 0;
-    lastFrameTime = now;
-    oneShotDone = false;
+  // Only switch animation when not mid-fade
+  if (fadePhase === 'none') {
+    const target = resolveAnimation();
+    if (target !== currentAnim) {
+      currentAnim = target;
+      currentFrame = 0;
+      lastFrameTime = now;
+      oneShotDone = false;
+    }
   }
 
   const anim = ANIMS[currentAnim];
@@ -109,6 +135,7 @@ function tick(now) {
     return;
   }
 
+  // Advance frames
   const interval = 1000 / anim.fps;
   if (now - lastFrameTime >= interval) {
     lastFrameTime = now;
@@ -117,16 +144,19 @@ function tick(now) {
     } else {
       if (currentFrame < anim.frames - 1) {
         currentFrame++;
-      } else {
+      } else if (!oneShotDone) {
         oneShotDone = true;
+        fadePhase = 'out';
       }
     }
   }
 
-  // Draw
+  // Draw with opacity
   ctx.clearRect(0, 0, 256, 256);
+  ctx.globalAlpha = opacity;
   const sx = currentFrame * anim.frameW;
   ctx.drawImage(images[currentAnim], sx, 0, anim.frameW, anim.frameH, 0, 0, 256, 256);
+  ctx.globalAlpha = 1;
 
   requestAnimationFrame(tick);
 }
