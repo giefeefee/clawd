@@ -32,6 +32,7 @@ const ctx = canvas.getContext('2d');
 const ANIMS = {
   typing:    { src: 'assets/typing.png',    frameW: 320, frameH: 320, frames: 23, fps: 8, loop: true },
   clapping:  { src: 'assets/clapping.png',  frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false },
+  latte:     { src: 'assets/latte.png',     frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1 },
 };
 
 const FALLBACK = 'typing';
@@ -67,9 +68,8 @@ function resolveAnimation() {
   const ev = lastEvent.event;
 
   if (lastEvent.timestamp > consumedTimestamp) {
-    if (ev === 'coffee' || ev === 'clap' || ev === 'stop') {
-      return 'clapping';
-    }
+    if (ev === 'coffee') return 'latte';
+    if (ev === 'clap' || ev === 'stop') return 'clapping';
   }
 
   return 'typing';
@@ -152,7 +152,9 @@ function tick(now) {
         currentFrame++;
       } else {
         oneShotLoops++;
-        if (oneShotLoops >= ONESHOT_PLAY_COUNT) {
+        const anim_ = ANIMS[currentAnim];
+        const repeats = anim_.repeats || ONESHOT_PLAY_COUNT;
+        if (oneShotLoops >= repeats) {
           oneShotDone = true;
           fadePhase = 'out';
         } else {
