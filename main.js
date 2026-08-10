@@ -1,4 +1,5 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, ipcMain, nativeImage, nativeTheme } = require('electron');
+nativeTheme.themeSource = 'dark';
 const path = require('path');
 const fs = require('fs');
 
@@ -7,6 +8,7 @@ const STATE_FILE = path.join(STATE_DIR, 'state.json');
 
 let win = null;
 let tray = null;
+let menuWin = null;
 let stateWatcher = null;
 
 function createWindow() {
@@ -50,21 +52,60 @@ function writeState(event) {
   pollState();
 }
 
+function showTrayMenu(bounds) {
+  if (menuWin && !menuWin.isDestroyed()) {
+    menuWin.close();
+    menuWin = null;
+    return;
+  }
+
+  const menuWidth = 160;
+  const menuHeight = 222;
+  const x = Math.round(bounds.x + bounds.width / 2 - menuWidth / 2);
+  const y = Math.round(bounds.y - menuHeight);
+
+  menuWin = new BrowserWindow({
+    width: menuWidth,
+    height: menuHeight,
+    x, y,
+    frame: false,
+    resizable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    focusable: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  menuWin.loadFile(path.join(__dirname, 'tray-menu.html'));
+  menuWin.on('blur', () => {
+    if (menuWin && !menuWin.isDestroyed()) {
+      menuWin.close();
+      menuWin = null;
+    }
+  });
+}
+
+ipcMain.on('tray-menu-action', (event, action) => {
+  if (menuWin && !menuWin.isDestroyed()) {
+    menuWin.close();
+    menuWin = null;
+  }
+  if (action === 'quit') {
+    app.quit();
+  } else {
+    writeState(action);
+  }
+});
+
 function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   tray = new Tray(nativeImage.createFromPath(iconPath));
   tray.setToolTip('爪爪 — Claude Code Companion');
-
-  const menu = Menu.buildFromTemplate([
-    { label: '給爪爪咖啡 ☕', click: () => writeState('coffee') },
-    { label: '拍拍手 👏', click: () => writeState('clap') },
-    { label: '戴墨鏡 😎', click: () => writeState('sunglasses') },
-    { label: '聽音樂 🎧', click: () => writeState('idle') },
-    { label: '回去打字 ⌨', click: () => writeState('tool_call') },
-    { type: 'separator' },
-    { label: '離開', click: () => app.quit() }
-  ]);
-  tray.setContextMenu(menu);
+  tray.on('click', (event, bounds) => showTrayMenu(bounds));
+  tray.on('right-click', (event, bounds) => showTrayMenu(bounds));
 }
 
 ipcMain.on('window-drag', (event, { dx, dy }) => {

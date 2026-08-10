@@ -33,8 +33,8 @@ const ANIMS = {
   typing:     { src: 'assets/typing.png',      frameW: 320, frameH: 320, frames: 23, fps: 8, loop: true },
   clapping:   { src: 'assets/clapping.png',    frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false },
   latte:      { src: 'assets/latte.png',       frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1 },
-  sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, tailFrom: 12, tailRepeats: 24 },
-  headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: true },
+  sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, tailFrom: 12, tailRepeats: 12 },
+  headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: true, renderSize: 108 },
 };
 
 const FALLBACK = 'typing';
@@ -194,7 +194,9 @@ function tick(now) {
   ctx.clearRect(0, 0, 128, 128);
   ctx.globalAlpha = opacity;
   const sx = currentFrame * anim.frameW;
-  ctx.drawImage(images[currentAnim], sx, 0, anim.frameW, anim.frameH, 0, 0, 128, 128);
+  const rs = anim.renderSize || 128;
+  const offset = (128 - rs) / 2;
+  ctx.drawImage(images[currentAnim], sx, 0, anim.frameW, anim.frameH, offset, offset, rs, rs);
   ctx.globalAlpha = 1;
 
   requestAnimationFrame(tick);
