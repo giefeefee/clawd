@@ -5,8 +5,8 @@
 <style>
   * { margin: 0; padding: 0; }
   body {
-    width: 256px;
-    height: 256px;
+    width: 128px;
+    height: 128px;
     overflow: hidden;
     background: transparent;
     user-select: none;
@@ -14,14 +14,14 @@
   }
   body:active { cursor: grabbing; }
   canvas {
-    width: 256px;
-    height: 256px;
+    width: 128px;
+    height: 128px;
     image-rendering: pixelated;
   }
 </style>
 </head>
 <body>
-<canvas id="c" width="256" height="256"></canvas>
+<canvas id="c" width="128" height="128"></canvas>
 <script>
 const { ipcRenderer } = require('electron');
 
@@ -48,25 +48,28 @@ let currentAnim = 'typing';
 let currentFrame = 0;
 let lastFrameTime = 0;
 let oneShotDone = false;
+let oneShotLoops = 0;
+const ONESHOT_PLAY_COUNT = 2;
 
 // Track Claude Code activity
 let lastEvent = { event: 'none', timestamp: 0 };
+let consumedTimestamp = 0;
 const IDLE_TIMEOUT = 60000;
 
 // Fade transition state
 let opacity = 1;
 let fadePhase = 'none'; // 'none' | 'out' | 'in'
-const FADE_OUT_SPEED = 0.035; // ~0.5s at 60fps
-const FADE_IN_SPEED = 0.05;   // ~0.3s at 60fps
+const FADE_OUT_SPEED = 0.035;
+const FADE_IN_SPEED = 0.05;
 
 function resolveAnimation() {
   const age = Date.now() - lastEvent.timestamp;
   const ev = lastEvent.event;
 
-  if (!oneShotDone) {
-    if (ev === 'coffee' && age < 10000) return 'clapping';
-    if (ev === 'clap' && age < 10000) return 'clapping';
-    if (ev === 'stop' && age < 10000) return 'clapping';
+  if (lastEvent.timestamp > consumedTimestamp) {
+    if (ev === 'coffee' || ev === 'clap' || ev === 'stop') {
+      return 'clapping';
+    }
   }
 
   return 'typing';
@@ -105,10 +108,12 @@ function tick(now) {
     if (opacity <= 0) {
       opacity = 0;
       fadePhase = 'in';
+      consumedTimestamp = lastEvent.timestamp;
       currentAnim = 'typing';
       currentFrame = 0;
       lastFrameTime = now;
       oneShotDone = false;
+      oneShotLoops = 0;
     }
   } else if (fadePhase === 'in') {
     opacity += FADE_IN_SPEED;
@@ -126,6 +131,7 @@ function tick(now) {
       currentFrame = 0;
       lastFrameTime = now;
       oneShotDone = false;
+      oneShotLoops = 0;
     }
   }
 
@@ -144,18 +150,23 @@ function tick(now) {
     } else {
       if (currentFrame < anim.frames - 1) {
         currentFrame++;
-      } else if (!oneShotDone) {
-        oneShotDone = true;
-        fadePhase = 'out';
+      } else {
+        oneShotLoops++;
+        if (oneShotLoops >= ONESHOT_PLAY_COUNT) {
+          oneShotDone = true;
+          fadePhase = 'out';
+        } else {
+          currentFrame = 0;
+        }
       }
     }
   }
 
   // Draw with opacity
-  ctx.clearRect(0, 0, 256, 256);
+  ctx.clearRect(0, 0, 128, 128);
   ctx.globalAlpha = opacity;
   const sx = currentFrame * anim.frameW;
-  ctx.drawImage(images[currentAnim], sx, 0, anim.frameW, anim.frameH, 0, 0, 256, 256);
+  ctx.drawImage(images[currentAnim], sx, 0, anim.frameW, anim.frameH, 0, 0, 128, 128);
   ctx.globalAlpha = 1;
 
   requestAnimationFrame(tick);
