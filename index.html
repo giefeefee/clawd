@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; }
+  body {
+    width: 256px;
+    height: 256px;
+    overflow: hidden;
+    background: transparent;
+    user-select: none;
+    cursor: grab;
+  }
+  body:active { cursor: grabbing; }
+  canvas {
+    width: 256px;
+    height: 256px;
+    image-rendering: pixelated;
+  }
+</style>
+</head>
+<body>
+<canvas id="c" width="256" height="256"></canvas>
+<script>
+const { ipcRenderer } = require('electron');
+
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// --- Sprite definitions ---
+const ANIMS = {
+  typing:    { src: 'assets/typing.png',    frameW: 320, frameH: 320, frames: 23, fps: 8, loop: true },
+  clapping:  { src: 'assets/clapping.png',  frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false },
+};
+
+const FALLBACK = 'typing';
+
+// --- State machine ---
+// Claude Code events → animation mapping
+// "tool_call" → typing (Claude is working)
+// "stop"      → clapping briefly, then idle
+// "coffee"    → latte animation (placeholder → clapping for now)
+// "clap"      → clapping
+// "none"/old  → idle (fallback to typing until headphones sprite exists)
+
+let currentAnim = 'typing';
+let currentFrame = 0;
+let lastFrameTime = 0;
+let oneShotDone = false;
+
+// Track Claude Code activity
+let lastEvent = { event: 'none', timestamp: 0 };
+const IDLE_TIMEOUT = 60000;    // 60s no activity → idle
+const CLAP_DURATION = 5000;    // show clapping for 5s after "stop"
+
+function resolveAnimation() {
+  const age = Date.now() - lastEvent.timestamp;
+  const ev = lastEvent.event;
+
+  if (ev === 'coffee' && age < 10000) return 'clapping'; // placeholder until latte sprite
+  if (ev === 'clap' && age < CLAP_DURATION) return 'clapping';
+  if (ev === 'stop' && age < CLAP_DURATION) return 'clapping';
+  if (ev === 'tool_call' && age < IDLE_TIMEOUT) return 'typing';
+  if (ev === 'stop' && age < IDLE_TIMEOUT) return 'typing'; // back to typing after clap
+  // idle: use typing as placeholder until headphones sprite exists
+  return 'typing';
+}
+
+// --- Image loading ---
+const images = {};
+let loadedCount = 0;
+const animKeys = Object.keys(ANIMS);
+
+animKeys.forEach(key => {
+  const img = new Image();
+  img.onload = () => {
+    images[key] = img;
+    loadedCount++;
+    if (loadedCount === animKeys.length) startLoop();
+  };
+  img.onerror = () => {
+    console.warn('Failed to load:', ANIMS[key].src);
+    loadedCount++;
+    if (loadedCount === animKeys.length) startLoop();
+  };
+  img.src = ANIMS[key].src;
+});
+
+// --- Animation loop ---
+function startLoop() {
+  lastFrameTime = performance.now();
+  requestAnimationFrame(tick);
+}
+
+function tick(now) {
+  const target = resolveAnimation();
+
+  if (target !== currentAnim) {
+    currentAnim = target;
+    currentFrame = 0;
+    lastFrameTime = now;
+    oneShotDone = false;
+  }
+
+  const anim = ANIMS[currentAnim];
+  if (!anim || !images[currentAnim]) {
+    requestAnimationFrame(tick);
+    return;
+  }
+
+  const interval = 1000 / anim.fps;
+  if (now - lastFrameTime >= interval) {
+    lastFrameTime = now;
+    if (anim.loop) {
+      currentFrame = (currentFrame + 1) % anim.frames;
+    } else {
+      if (currentFrame < anim.frames - 1) {
+        currentFrame++;
+      } else {
+        oneShotDone = true;
+      }
+    }
+  }
+
+  // Draw
+  ctx.clearRect(0, 0, 256, 256);
+  const sx = currentFrame * anim.frameW;
+  ctx.drawImage(images[currentAnim], sx, 0, anim.frameW, anim.frameH, 0, 0, 256, 256);
+
+  requestAnimationFrame(tick);
+}
+
+// --- IPC: receive state from main process ---
+ipcRenderer.on('state-change', (event, state) => {
+  lastEvent = state;
+});
+
+// --- Drag support ---
+let dragging = false;
+let dragStartX = 0;
+let dragStartY = 0;
+
+document.addEventListener('mousedown', (e) => {
+  if (e.button === 0) {
+    dragging = true;
+    dragStartX = e.screenX;
+    dragStartY = e.screenY;
+  }
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  const dx = e.screenX - dragStartX;
+  const dy = e.screenY - dragStartY;
+  dragStartX = e.screenX;
+  dragStartY = e.screenY;
+  ipcRenderer.send('window-drag', { dx, dy });
+});
+
+document.addEventListener('mouseup', () => {
+  dragging = false;
+});
+</script>
+</body>
+</html>
