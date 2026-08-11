@@ -203,9 +203,10 @@ const SPEECH = {
     '該休息囉！',
   ],
   rest: [
-    'zzZ...',
-    '好睡～',
-    '...呼...',
+    '爪爪不在座位上',
+    '桌上好安靜...',
+    '去哪了呢？',
+    '椅子還是溫的',
   ],
   restInterrupted: [
     '不是說要休息嗎～',
@@ -341,22 +342,26 @@ const FADE_IN_SPEED = 0.05;
 function resolveAnimation() {
   const ev = lastEvent.event;
 
+  const inRestFlow = currentAnim === 'dizzy' || currentAnim === 'rest';
   if (lastEvent.timestamp > consumedTimestamp) {
     if (ev === 'coffee') {
       if (grudgeMode) exitGrudge();
       return 'latte';
     }
-    if (ev === 'sunglasses') return 'sunglasses';
-    if (ev === 'clap' || ev === 'stop') return 'clapping';
-    if (ev === 'idle') return 'headphones';
-    if (ev === 'google_service') return 'google_service';
-    const age = Date.now() - lastEvent.timestamp;
-    if (age > IDLE_TIMEOUT) {
-      if (grudgeMode && age >= REST_DURATION_MS) exitGrudge();
-      return grudgeMode ? 'grudge' : 'headphones';
+    if (!inRestFlow) {
+      if (ev === 'sunglasses') return 'sunglasses';
+      if (ev === 'clap' || ev === 'stop') return 'clapping';
+      if (ev === 'idle') return 'headphones';
+      if (ev === 'google_service') return 'google_service';
+      const age = Date.now() - lastEvent.timestamp;
+      if (age > IDLE_TIMEOUT) {
+        if (grudgeMode && age >= REST_DURATION_MS) exitGrudge();
+        return grudgeMode ? 'grudge' : 'headphones';
+      }
     }
   }
 
+  if (currentAnim === 'dizzy') return 'dizzy';
   if (currentAnim === 'rest') return 'rest';
 
   if (!restReminderTriggered && !grudgeMode && Date.now() - workStartTime >= REST_REMINDER_MS) {
@@ -419,7 +424,7 @@ function tick(now) {
       } else {
         stopRestCountdown();
         renderNameTag('爪爪');
-        currentAnim = 'typing';
+        currentAnim = grudgeMode ? 'grudge' : 'typing';
         currentFrame = 0;
         lastFrameTime = now;
         oneShotDone = false;
@@ -594,6 +599,7 @@ setInterval(() => {
   if (usageData && usageData.five_hour_resets) updateUsageText(usageData);
 }, 60000);
 
+
 // --- Click (poke) reaction ---
 const POKE_LINES = [
   '幹嘛啦～',
@@ -608,6 +614,13 @@ const POKE_LINES = [
 let pokeShaking = false;
 
 function pokeReaction() {
+  if (currentAnim === 'rest') {
+    endRest();
+    grudgeMode = true;
+    fadePhase = 'out';
+    randomSpeech('restInterrupted');
+    return;
+  }
   showSpeech(POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]);
   if (!pokeShaking) {
     pokeShaking = true;

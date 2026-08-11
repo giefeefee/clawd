@@ -29,7 +29,6 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, 'index.html'));
-
   pollState();
   stateWatcher = setInterval(pollState, 1000);
 }
