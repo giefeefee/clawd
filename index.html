@@ -227,6 +227,45 @@ function randomSpeech(animName) {
   showSpeech(pool[Math.floor(Math.random() * pool.length)]);
 }
 
+function startRestCountdown() {
+  restStartTime = Date.now();
+  stopRestCountdown();
+  renderNameTag('爪爪去休息10分鐘');
+  restCountdownTimer = setInterval(() => {
+    if (currentAnim !== 'rest') { stopRestCountdown(); return; }
+    const elapsed = Date.now() - restStartTime;
+    const remaining = Math.max(0, REST_DURATION_MS - elapsed);
+    const mins = Math.ceil(remaining / 60000);
+    if (remaining <= 0) {
+      renderNameTag('爪爪回來了！');
+      stopRestCountdown();
+      workStartTime = Date.now();
+      restReminderTriggered = false;
+      setTimeout(() => {
+        if (currentAnim === 'rest') {
+          fadePhase = 'out';
+        }
+      }, 3000);
+    } else {
+      renderNameTag('爪爪去休息' + mins + '分鐘');
+    }
+  }, 30000);
+}
+
+function stopRestCountdown() {
+  if (restCountdownTimer) {
+    clearInterval(restCountdownTimer);
+    restCountdownTimer = null;
+  }
+}
+
+function endRest() {
+  stopRestCountdown();
+  renderNameTag('爪爪');
+  workStartTime = Date.now();
+  restReminderTriggered = false;
+}
+
 function startTypingSpeechLoop() {
   stopTypingSpeechLoop();
   speechLoop = setInterval(() => {
@@ -272,8 +311,11 @@ const IDLE_TIMEOUT = 60000;
 
 // --- 50-minute rest reminder ---
 const REST_REMINDER_MS = 50 * 60 * 1000;
+const REST_DURATION_MS = 10 * 60 * 1000;
 let workStartTime = Date.now();
 let restReminderTriggered = false;
+let restStartTime = 0;
+let restCountdownTimer = null;
 
 let opacity = 1;
 let fadePhase = 'none';
@@ -351,7 +393,10 @@ function tick(now) {
         positionNameAndSpeech('rest');
         randomSpeech('rest');
         stopTypingSpeechLoop();
+        startRestCountdown();
       } else {
+        stopRestCountdown();
+        renderNameTag('爪爪');
         currentAnim = 'typing';
         currentFrame = 0;
         lastFrameTime = now;
@@ -452,8 +497,7 @@ ipcRenderer.on('state-change', (event, state) => {
   const wasIdle = lastEvent.event === 'stop' || lastEvent.event === 'idle' || lastEvent.event === 'none';
   lastEvent = state;
   if ((wasIdle || currentAnim === 'rest') && (state.event === 'tool_call' || state.event === 'google_service')) {
-    workStartTime = Date.now();
-    restReminderTriggered = false;
+    endRest();
   }
 });
 
