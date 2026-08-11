@@ -408,15 +408,15 @@ ipcRenderer.on('dynamic-speech', (event, data) => {
   }
 });
 
-// --- Usage display ---
-let lastUsageCalls = -1;
+// --- Usage display (rate limits from statusline) ---
+let lastUsageTs = 0;
 ipcRenderer.on('usage-update', (event, data) => {
-  if (!data || !data.calls) return;
-  const today = new Date().toISOString().slice(0, 10);
-  if (data.date !== today) return;
-  if (data.calls !== lastUsageCalls) {
-    lastUsageCalls = data.calls;
-    usageEl.textContent = '🔧 ' + data.calls;
+  if (!data || !data.ts || data.ts <= lastUsageTs) return;
+  lastUsageTs = data.ts;
+  if (data.five_hour != null) {
+    const pct = data.five_hour;
+    usageEl.textContent = pct + '%';
+    usageEl.style.color = pct >= 80 ? 'rgba(255,100,100,0.9)' : pct >= 50 ? 'rgba(255,200,100,0.85)' : 'rgba(255,255,255,0.7)';
     usageEl.classList.add('visible');
   }
 });

@@ -33,13 +33,13 @@ printf '{"text":"正在查程式碼","timestamp":%s000}' "$(date +%s)" > "$LOCAL
 
 台詞應該要短（10 字以內最好），反映 Claude Code 當下正在做什麼。每個 timestamp 只顯示一次，新的 timestamp 會覆蓋舊的。
 
-## 用量計數器
+## 用量顯示
 
-爪爪名字下方會顯示今日的工具呼叫次數（🔧 數字），每次 Claude Code 使用工具時自動遞增。
+爪爪名字下方會顯示 5 小時滾動窗口的用量百分比（例如「47%」），顏色會隨用量變化：白色（正常）→ 橘色（≥50%）→ 紅色（≥80%）。
 
-- 資料來源：PostToolUse hook 寫入 `%LOCALAPPDATA%\clawd\usage.json`
-- 每日自動歸零（按日期判斷）
-- 這是活動次數，不是 API 配額百分比（Claude Code 不在本地檔案暴露即時配額資料）
+- 資料來源：Claude Code 的 `statusLine` 功能，每次畫面更新時把 `rate_limits` JSON 餵給 `~/.claude/statusline-clawd.js`
+- 腳本把用量資料寫入 `%LOCALAPPDATA%\clawd\usage.json`，爪爪每秒讀取
+- 僅限 Claude.ai Pro/Max 訂閱有資料；API key 登入時 rate_limits 為空
 
 ## 隱私原則
 
