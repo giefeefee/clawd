@@ -410,16 +410,39 @@ ipcRenderer.on('dynamic-speech', (event, data) => {
 
 // --- Usage display (rate limits from statusline) ---
 let lastUsageTs = 0;
-ipcRenderer.on('usage-update', (event, data) => {
-  if (!data || !data.ts || data.ts <= lastUsageTs) return;
-  lastUsageTs = data.ts;
-  if (data.five_hour != null) {
-    const pct = data.five_hour;
-    usageEl.textContent = pct + '%';
-    usageEl.style.color = pct >= 80 ? 'rgba(255,100,100,0.9)' : pct >= 50 ? 'rgba(255,200,100,0.85)' : 'rgba(255,255,255,0.7)';
-    usageEl.classList.add('visible');
+function formatResetTime(resetEpoch) {
+  const diff = resetEpoch * 1000 - Date.now();
+  if (diff <= 0) return '0m';
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (hours > 0) return hours + 'h' + (mins > 0 ? mins + 'm' : '');
+  return mins + 'm';
+}
+
+function updateUsageText(data) {
+  const parts = [];
+  const pct5 = data.five_hour;
+  if (pct5 != null) {
+    parts.push(Math.round(pct5) + '%');
+    if (data.five_hour_resets) parts.push(formatResetTime(data.five_hour_resets));
   }
+  if (data.seven_day != null) parts.push('7d ' + Math.round(data.seven_day) + '%');
+  usageEl.textContent = parts.join(' | ');
+  const maxPct = Math.max(pct5 || 0, data.seven_day || 0);
+  usageEl.style.color = maxPct >= 80 ? 'rgba(255,100,100,0.9)' : maxPct >= 50 ? 'rgba(255,200,100,0.85)' : 'rgba(255,255,255,0.7)';
+  usageEl.classList.add('visible');
+}
+
+let usageData = null;
+ipcRenderer.on('usage-update', (event, data) => {
+  if (!data || !data.ts) return;
+  usageData = data;
+  updateUsageText(data);
 });
+
+setInterval(() => {
+  if (usageData && usageData.five_hour_resets) updateUsageText(usageData);
+}, 60000);
 
 // --- Drag support ---
 let dragging = false;
