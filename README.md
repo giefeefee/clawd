@@ -4,7 +4,7 @@ A pixel-art desktop pet that reacts to your [Claude Code](https://docs.anthropic
 
 Clawd sits on your screen, types when you're working, claps when a task finishes, and idles with headphones when you step away — all driven by Claude Code's [hooks API](https://docs.anthropic.com/en/docs/claude-code/hooks).
 
-![Clawd typing](assets/typing_cabinet.png)
+![Clawd typing](assets/demo.gif)
 
 ## How it works
 
@@ -23,6 +23,7 @@ Clawd reads a tiny JSON file (`state.json`) once per second. Claude Code's PostT
 - **Windows 10/11** (macOS/Linux support planned)
 - **Node.js** 18+
 - **Claude Code** CLI
+- **Dark desktop wallpaper** recommended (text labels are white)
 
 ## Quick start
 

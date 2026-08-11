@@ -48,9 +48,17 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, 'index.html'), { query: { lang: currentLang } });
+  win.setIgnoreMouseEvents(true, { forward: true });
   pollState();
   stateWatcher = setInterval(pollState, 1000);
 }
+
+ipcMain.on('mouse-enter-opaque', () => {
+  if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(false);
+});
+ipcMain.on('mouse-leave-opaque', () => {
+  if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(true, { forward: true });
+});
 
 function pollState() {
   try {

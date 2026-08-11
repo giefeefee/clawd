@@ -586,6 +586,18 @@ function pokeReaction() {
   }
 }
 
+// --- Click-through for transparent areas ---
+document.addEventListener('mousemove', (e) => {
+  const r = canvas.getBoundingClientRect();
+  const margin = 10;
+  const over = (e.clientX >= r.left - margin && e.clientX <= r.right + margin && e.clientY >= r.top - margin && e.clientY <= r.bottom + margin);
+  if (over) {
+    ipcRenderer.send('mouse-enter-opaque');
+  } else if (!dragging) {
+    ipcRenderer.send('mouse-leave-opaque');
+  }
+});
+
 // --- Drag support ---
 let dragging = false;
 let dragStartX = 0;
@@ -614,9 +626,13 @@ document.addEventListener('mousemove', (e) => {
   ipcRenderer.send('window-drag', { dx, dy });
 });
 
-document.addEventListener('mouseup', () => {
+document.addEventListener('mouseup', (e) => {
   if (dragging && !dragMoved && pokeTarget) pokeReaction();
   dragging = false;
+  const r = canvas.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+    ipcRenderer.send('mouse-leave-opaque');
+  }
 });
 </script>
 </body>
