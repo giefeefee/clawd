@@ -273,6 +273,12 @@ function endRest() {
   restReminderTriggered = false;
 }
 
+function exitGrudge() {
+  grudgeMode = false;
+  workStartTime = Date.now();
+  restReminderTriggered = false;
+}
+
 function startTypingSpeechLoop() {
   stopTypingSpeechLoop();
   speechLoop = setInterval(() => {
@@ -300,7 +306,7 @@ const ANIMS = {
   headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108, nameY: 15, nameX: 0 },
   dizzy:      { src: 'assets/dizzy.png',       frameW: 160, frameH: 160, frames: 8,  fps: 6, loop: false, repeats: 1, nameY: 0, nameX: 0 },
   rest:       { src: 'assets/rest.png',       frameW: 160, frameH: 160, frames: 1,  fps: 1, loop: true, nameY: 0, nameX: 0 },
-  grudge:     { src: 'assets/grudge.png',    frameW: 160, frameH: 160, frames: 8,  fps: 6, loop: false, repeats: 1, nameY: 0, nameX: 0 },
+  grudge:     { src: 'assets/grudge.png',    frameW: 160, frameH: 160, frames: 8,  fps: 6, loop: true, nameY: 0, nameX: 0 },
 };
 
 // --- State machine ---
@@ -324,6 +330,8 @@ let workStartTime = Date.now();
 let restReminderTriggered = false;
 let restStartTime = 0;
 let restCountdownTimer = null;
+let grudgeMode = false;
+let lastToolCallTime = Date.now();
 
 let opacity = 1;
 let fadePhase = 'none';
@@ -334,23 +342,29 @@ function resolveAnimation() {
   const ev = lastEvent.event;
 
   if (lastEvent.timestamp > consumedTimestamp) {
+    if (ev === 'coffee') {
+      if (grudgeMode) exitGrudge();
+      return 'latte';
+    }
     if (ev === 'sunglasses') return 'sunglasses';
-    if (ev === 'coffee') return 'latte';
     if (ev === 'clap' || ev === 'stop') return 'clapping';
     if (ev === 'idle') return 'headphones';
     if (ev === 'google_service') return 'google_service';
     const age = Date.now() - lastEvent.timestamp;
-    if (age > IDLE_TIMEOUT) return 'headphones';
+    if (age > IDLE_TIMEOUT) {
+      if (grudgeMode && age >= REST_DURATION_MS) exitGrudge();
+      return grudgeMode ? 'grudge' : 'headphones';
+    }
   }
 
   if (currentAnim === 'rest') return 'rest';
 
-  if (!restReminderTriggered && Date.now() - workStartTime >= REST_REMINDER_MS) {
+  if (!restReminderTriggered && !grudgeMode && Date.now() - workStartTime >= REST_REMINDER_MS) {
     restReminderTriggered = true;
     return 'dizzy';
   }
 
-  return 'typing';
+  return grudgeMode ? 'grudge' : 'typing';
 }
 
 // --- Image loading ---
@@ -504,20 +518,16 @@ function tick(now) {
 ipcRenderer.on('state-change', (event, state) => {
   const wasIdle = lastEvent.event === 'stop' || lastEvent.event === 'idle' || lastEvent.event === 'none';
   lastEvent = state;
-  if ((wasIdle || currentAnim === 'rest') && (state.event === 'tool_call' || state.event === 'google_service')) {
-    const wasResting = currentAnim === 'rest';
-    endRest();
-    if (wasResting) {
-      consumedTimestamp = state.timestamp;
-      currentAnim = 'grudge';
-      currentFrame = 0;
-      oneShotDone = false;
-      oneShotLoops = 0;
-      playState = 'playing';
-      tailLoops = 0;
-      positionNameAndSpeech('grudge');
+  if (state.event === 'tool_call' || state.event === 'google_service') {
+    if (currentAnim === 'rest') {
+      endRest();
+      grudgeMode = true;
       randomSpeech('restInterrupted');
+    } else if (wasIdle && grudgeMode) {
+      const idleTime = Date.now() - lastToolCallTime;
+      if (idleTime >= REST_DURATION_MS) exitGrudge();
     }
+    lastToolCallTime = Date.now();
   }
 });
 
