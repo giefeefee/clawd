@@ -195,6 +195,13 @@ const SPEECH = {
     '翻翻抽屜...',
     '找到了！',
   ],
+  dizzy: [
+    '休息一下吧～',
+    '工作50分鐘了！',
+    '眼睛好花...',
+    '站起來動一動～',
+    '該休息囉！',
+  ],
 };
 
 let speechTimer = null;
@@ -240,6 +247,7 @@ const ANIMS = {
   latte:      { src: 'assets/latte.png',       frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1, nameY: 0, nameX: 0 },
   sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, repeats: 1, nameY: 27, nameX: 8 },
   headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108, nameY: 15, nameX: 0 },
+  dizzy:      { src: 'assets/dizzy.png',       frameW: 160, frameH: 160, frames: 8,  fps: 6, loop: false, repeats: 1, nameY: 0, nameX: 0 },
 };
 
 // --- State machine ---
@@ -255,6 +263,11 @@ const ONESHOT_PLAY_COUNT = 2;
 let lastEvent = { event: 'none', timestamp: 0 };
 let consumedTimestamp = 0;
 const IDLE_TIMEOUT = 60000;
+
+// --- 50-minute rest reminder ---
+const REST_REMINDER_MS = 50 * 60 * 1000;
+let workStartTime = Date.now();
+let restReminderTriggered = false;
 
 let opacity = 1;
 let fadePhase = 'none';
@@ -272,6 +285,11 @@ function resolveAnimation() {
     if (ev === 'google_service') return 'google_service';
     const age = Date.now() - lastEvent.timestamp;
     if (age > IDLE_TIMEOUT) return 'headphones';
+  }
+
+  if (!restReminderTriggered && Date.now() - workStartTime >= REST_REMINDER_MS) {
+    restReminderTriggered = true;
+    return 'dizzy';
   }
 
   return 'typing';
@@ -314,6 +332,10 @@ function tick(now) {
       opacity = 0;
       fadePhase = 'in';
       consumedTimestamp = lastEvent.timestamp;
+      if (currentAnim === 'dizzy') {
+        workStartTime = Date.now();
+        restReminderTriggered = false;
+      }
       currentAnim = 'typing';
       currentFrame = 0;
       lastFrameTime = now;
@@ -410,7 +432,12 @@ function tick(now) {
 
 // --- IPC: receive state from main process ---
 ipcRenderer.on('state-change', (event, state) => {
+  const wasIdle = lastEvent.event === 'stop' || lastEvent.event === 'idle' || lastEvent.event === 'none';
   lastEvent = state;
+  if (wasIdle && (state.event === 'tool_call' || state.event === 'google_service')) {
+    workStartTime = Date.now();
+    restReminderTriggered = false;
+  }
 });
 
 // --- Dynamic speech from Claude Code (via speech.json) ---
