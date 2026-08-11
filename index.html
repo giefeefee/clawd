@@ -88,8 +88,8 @@
 
   #usage {
     position: absolute;
-    bottom: 65px;
-    left: 42%;
+    bottom: 0px;
+    left: 50%;
     transform: translateX(-50%);
     font-size: 10px;
     font-family: "Consolas", "Courier New", monospace;
@@ -99,7 +99,7 @@
     pointer-events: none;
     z-index: 85;
     opacity: 0;
-    transition: opacity 0.5s ease, bottom 0.3s ease;
+    transition: opacity 0.5s ease;
   }
   #usage.visible {
     opacity: 1;
@@ -136,8 +136,6 @@ renderNameTag('爪爪');
 const NAME_BASE_Y = 80;
 const NAME_BASE_X = 42;
 const SPEECH_GAP = 25;
-const USAGE_GAP = -15;
-
 function positionNameAndSpeech(animName) {
   const anim = ANIMS[animName];
   const oy = anim ? (anim.nameY || 0) : 0;
@@ -146,8 +144,6 @@ function positionNameAndSpeech(animName) {
   nameTag.style.left = (NAME_BASE_X + ox) + '%';
   speechEl.style.bottom = (NAME_BASE_Y + oy + SPEECH_GAP) + 'px';
   speechEl.style.left = (NAME_BASE_X + ox) + '%';
-  usageEl.style.bottom = (NAME_BASE_Y + oy + USAGE_GAP) + 'px';
-  usageEl.style.left = (NAME_BASE_X + ox) + '%';
 }
 
 // --- Speech bubble ---
