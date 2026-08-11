@@ -6,7 +6,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     width: 200px;
-    height: 220px;
+    height: 238px;
     overflow: hidden;
     background: transparent;
     user-select: none;
@@ -16,7 +16,7 @@
   body:active { cursor: grabbing; }
   canvas {
     position: absolute;
-    bottom: 2px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     width: 128px;
@@ -88,7 +88,7 @@
 
   #usage {
     position: absolute;
-    bottom: 0px;
+    bottom: 2px;
     left: 50%;
     transform: translateX(-50%);
     font-size: 10px;
@@ -133,7 +133,7 @@ function renderNameTag(text) {
 }
 renderNameTag('爪爪');
 
-const NAME_BASE_Y = 80;
+const NAME_BASE_Y = 98;
 const NAME_BASE_X = 42;
 const SPEECH_GAP = 25;
 function positionNameAndSpeech(animName) {

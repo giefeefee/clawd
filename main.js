@@ -16,7 +16,7 @@ let stateWatcher = null;
 function createWindow() {
   win = new BrowserWindow({
     width: 200,
-    height: 220,
+    height: 238,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
