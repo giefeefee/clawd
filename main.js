@@ -6,6 +6,7 @@ const fs = require('fs');
 const STATE_DIR = path.join(process.env.LOCALAPPDATA, 'clawd');
 const STATE_FILE = path.join(STATE_DIR, 'state.json');
 const SPEECH_FILE = path.join(STATE_DIR, 'speech.json');
+const USAGE_FILE = path.join(STATE_DIR, 'usage.json');
 
 let win = null;
 let tray = null;
@@ -50,6 +51,13 @@ function pollState() {
     const speech = JSON.parse(raw);
     if (win && !win.isDestroyed()) {
       win.webContents.send('dynamic-speech', speech);
+    }
+  } catch (e) {}
+  try {
+    const raw = fs.readFileSync(USAGE_FILE, 'utf8');
+    const usage = JSON.parse(raw);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('usage-update', usage);
     }
   } catch (e) {}
 }

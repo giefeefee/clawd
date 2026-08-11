@@ -85,10 +85,30 @@
     border-style: solid;
     border-color: rgba(0, 0, 0, 0.75) transparent transparent;
   }
+
+  #usage {
+    position: absolute;
+    bottom: 65px;
+    left: 42%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-family: "Consolas", "Courier New", monospace;
+    color: rgba(255, 255, 255, 0.7);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 85;
+    opacity: 0;
+    transition: opacity 0.5s ease, bottom 0.3s ease;
+  }
+  #usage.visible {
+    opacity: 1;
+  }
 </style>
 </head>
 <body>
 <div id="speech"></div>
+<div id="usage"></div>
 <canvas id="c" width="128" height="128"></canvas>
 <div id="name-tag"></div>
 <script>
@@ -98,6 +118,7 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const nameTag = document.getElementById('name-tag');
 const speechEl = document.getElementById('speech');
+const usageEl = document.getElementById('usage');
 
 // --- Name tag (same style as 芋頭: per-char bob + glow) ---
 function renderNameTag(text) {
@@ -115,6 +136,7 @@ renderNameTag('爪爪');
 const NAME_BASE_Y = 80;
 const NAME_BASE_X = 42;
 const SPEECH_GAP = 25;
+const USAGE_GAP = -15;
 
 function positionNameAndSpeech(animName) {
   const anim = ANIMS[animName];
@@ -124,6 +146,8 @@ function positionNameAndSpeech(animName) {
   nameTag.style.left = (NAME_BASE_X + ox) + '%';
   speechEl.style.bottom = (NAME_BASE_Y + oy + SPEECH_GAP) + 'px';
   speechEl.style.left = (NAME_BASE_X + ox) + '%';
+  usageEl.style.bottom = (NAME_BASE_Y + oy + USAGE_GAP) + 'px';
+  usageEl.style.left = (NAME_BASE_X + ox) + '%';
 }
 
 // --- Speech bubble ---
@@ -381,6 +405,19 @@ ipcRenderer.on('dynamic-speech', (event, data) => {
   if (data && data.text && data.timestamp > lastDynSpeechTs) {
     lastDynSpeechTs = data.timestamp;
     showSpeech(data.text);
+  }
+});
+
+// --- Usage display ---
+let lastUsageCalls = -1;
+ipcRenderer.on('usage-update', (event, data) => {
+  if (!data || !data.calls) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (data.date !== today) return;
+  if (data.calls !== lastUsageCalls) {
+    lastUsageCalls = data.calls;
+    usageEl.textContent = '🔧 ' + data.calls;
+    usageEl.classList.add('visible');
   }
 });
 

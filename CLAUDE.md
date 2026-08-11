@@ -33,6 +33,14 @@ printf '{"text":"正在查程式碼","timestamp":%s000}' "$(date +%s)" > "$LOCAL
 
 台詞應該要短（10 字以內最好），反映 Claude Code 當下正在做什麼。每個 timestamp 只顯示一次，新的 timestamp 會覆蓋舊的。
 
+## 用量計數器
+
+爪爪名字下方會顯示今日的工具呼叫次數（🔧 數字），每次 Claude Code 使用工具時自動遞增。
+
+- 資料來源：PostToolUse hook 寫入 `%LOCALAPPDATA%\clawd\usage.json`
+- 每日自動歸零（按日期判斷）
+- 這是活動次數，不是 API 配額百分比（Claude Code 不在本地檔案暴露即時配額資料）
+
 ## 隱私原則
 
 這個專案**不讀取任何使用者檔案**，只透過 Claude Code 的公開 hooks API 接收事件類型（"tool_call" / "stop"），不含對話內容。可以安全分享。
