@@ -26,9 +26,10 @@
 
   #name-tag {
     position: absolute;
-    bottom: 135px;
-    left: 50%;
+    bottom: 80px;
+    left: 42%;
     transform: translateX(-50%);
+    transition: bottom 0.3s ease;
     font-size: 13px;
     font-weight: 600;
     color: #ffffff;
@@ -53,8 +54,8 @@
 
   #speech {
     position: absolute;
-    bottom: 165px;
-    left: 50%;
+    bottom: 105px;
+    left: 42%;
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.75);
     border-radius: 12px;
@@ -111,6 +112,20 @@ function renderNameTag(text) {
 }
 renderNameTag('爪爪');
 
+const NAME_BASE_Y = 80;
+const NAME_BASE_X = 42;
+const SPEECH_GAP = 25;
+
+function positionNameAndSpeech(animName) {
+  const anim = ANIMS[animName];
+  const oy = anim ? (anim.nameY || 0) : 0;
+  const ox = anim ? (anim.nameX || 0) : 0;
+  nameTag.style.bottom = (NAME_BASE_Y + oy) + 'px';
+  nameTag.style.left = (NAME_BASE_X + ox) + '%';
+  speechEl.style.bottom = (NAME_BASE_Y + oy + SPEECH_GAP) + 'px';
+  speechEl.style.left = (NAME_BASE_X + ox) + '%';
+}
+
 // --- Speech bubble ---
 const SPEECH = {
   typing: [
@@ -158,7 +173,7 @@ function showSpeech(text) {
   clearTimeout(speechTimer);
   speechTimer = setTimeout(() => {
     speechEl.classList.remove('visible');
-  }, 4000);
+  }, 6000);
 }
 
 function randomSpeech(animName) {
@@ -185,11 +200,11 @@ function stopTypingSpeechLoop() {
 
 // --- Sprite definitions ---
 const ANIMS = {
-  typing:     { src: 'assets/typing.png',      frameW: 320, frameH: 320, frames: 23, fps: 8, loop: true },
-  clapping:   { src: 'assets/clapping.png',    frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false },
-  latte:      { src: 'assets/latte.png',       frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1 },
-  sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false },
-  headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108 },
+  typing:     { src: 'assets/typing.png',      frameW: 320, frameH: 320, frames: 23, fps: 8, loop: true, nameY: 0, nameX: 0 },
+  clapping:   { src: 'assets/clapping.png',    frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false, nameY: 33, nameX: 8 },
+  latte:      { src: 'assets/latte.png',       frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1, nameY: 0, nameX: 0 },
+  sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, nameY: 27, nameX: 8 },
+  headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108, nameY: 15, nameX: 0 },
 };
 
 // --- State machine ---
@@ -270,6 +285,7 @@ function tick(now) {
       oneShotLoops = 0;
       playState = 'playing';
       tailLoops = 0;
+      positionNameAndSpeech('typing');
       startTypingSpeechLoop();
     }
   } else if (fadePhase === 'in') {
@@ -290,6 +306,7 @@ function tick(now) {
       oneShotLoops = 0;
       playState = 'playing';
       tailLoops = 0;
+      positionNameAndSpeech(target);
       randomSpeech(target);
       if (target === 'typing') {
         startTypingSpeechLoop();
