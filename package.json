@@ -1,7 +1,12 @@
 {
-  "name": "claude-code-clawd",
+  "name": "clawd",
   "version": "1.0.0",
-  "description": "爪爪 — Claude Code desktop companion that reacts to your coding session",
+  "description": "Clawd — a desktop pet that reacts to your Claude Code session in real time",
   "main": "main.js",
-  "private": true
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  }
 }
