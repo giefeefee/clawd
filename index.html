@@ -207,6 +207,13 @@ const SPEECH = {
     '好睡～',
     '...呼...',
   ],
+  restInterrupted: [
+    '不是說要休息嗎～',
+    '才剛坐下欸...',
+    '好吧好吧...',
+    '人類你不累嗎？',
+    '嗚…回來了啦',
+  ],
 };
 
 let speechTimer = null;
@@ -497,7 +504,9 @@ ipcRenderer.on('state-change', (event, state) => {
   const wasIdle = lastEvent.event === 'stop' || lastEvent.event === 'idle' || lastEvent.event === 'none';
   lastEvent = state;
   if ((wasIdle || currentAnim === 'rest') && (state.event === 'tool_call' || state.event === 'google_service')) {
+    const wasResting = currentAnim === 'rest';
     endRest();
+    if (wasResting) randomSpeech('restInterrupted');
   }
 });
 
