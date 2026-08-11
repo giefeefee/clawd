@@ -300,6 +300,7 @@ const ANIMS = {
   headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108, nameY: 15, nameX: 0 },
   dizzy:      { src: 'assets/dizzy.png',       frameW: 160, frameH: 160, frames: 8,  fps: 6, loop: false, repeats: 1, nameY: 0, nameX: 0 },
   rest:       { src: 'assets/rest.png',       frameW: 160, frameH: 160, frames: 1,  fps: 1, loop: true, nameY: 0, nameX: 0 },
+  grudge:     { src: 'assets/grudge.png',    frameW: 160, frameH: 160, frames: 8,  fps: 6, loop: false, repeats: 1, nameY: 0, nameX: 0 },
 };
 
 // --- State machine ---
@@ -506,7 +507,17 @@ ipcRenderer.on('state-change', (event, state) => {
   if ((wasIdle || currentAnim === 'rest') && (state.event === 'tool_call' || state.event === 'google_service')) {
     const wasResting = currentAnim === 'rest';
     endRest();
-    if (wasResting) randomSpeech('restInterrupted');
+    if (wasResting) {
+      consumedTimestamp = state.timestamp;
+      currentAnim = 'grudge';
+      currentFrame = 0;
+      oneShotDone = false;
+      oneShotLoops = 0;
+      playState = 'playing';
+      tailLoops = 0;
+      positionNameAndSpeech('grudge');
+      randomSpeech('restInterrupted');
+    }
   }
 });
 
