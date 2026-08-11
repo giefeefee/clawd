@@ -26,7 +26,7 @@
 
   #name-tag {
     position: absolute;
-    bottom: 3px;
+    bottom: 134px;
     left: 50%;
     transform: translateX(-50%);
     font-size: 13px;
@@ -53,7 +53,7 @@
 
   #speech {
     position: absolute;
-    bottom: 155px;
+    bottom: 165px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.75);
@@ -189,7 +189,7 @@ const ANIMS = {
   clapping:   { src: 'assets/clapping.png',    frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false },
   latte:      { src: 'assets/latte.png',       frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1 },
   sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false },
-  headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: true, renderSize: 108 },
+  headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108 },
 };
 
 // --- State machine ---
@@ -218,10 +218,10 @@ function resolveAnimation() {
     if (ev === 'sunglasses') return 'sunglasses';
     if (ev === 'coffee') return 'latte';
     if (ev === 'clap' || ev === 'stop') return 'clapping';
+    if (ev === 'idle') return 'headphones';
+    const age = Date.now() - lastEvent.timestamp;
+    if (age > IDLE_TIMEOUT) return 'headphones';
   }
-
-  const age = Date.now() - lastEvent.timestamp;
-  if (ev === 'idle' || age > IDLE_TIMEOUT) return 'headphones';
 
   return 'typing';
 }
@@ -356,6 +356,15 @@ function tick(now) {
 // --- IPC: receive state from main process ---
 ipcRenderer.on('state-change', (event, state) => {
   lastEvent = state;
+});
+
+// --- Dynamic speech from Claude Code (via speech.json) ---
+let lastDynSpeechTs = 0;
+ipcRenderer.on('dynamic-speech', (event, data) => {
+  if (data && data.text && data.timestamp > lastDynSpeechTs) {
+    lastDynSpeechTs = data.timestamp;
+    showSpeech(data.text);
+  }
 });
 
 // --- Drag support ---
