@@ -21,6 +21,9 @@
   .item:hover {
     background: #3d3d3d;
   }
+  .item.current {
+    color: #888;
+  }
   .sep {
     height: 1px;
     background: #555;
@@ -29,15 +32,32 @@
 </style>
 </head>
 <body>
-  <div class="item" data-action="coffee">☕ 給爪爪咖啡</div>
-  <div class="item" data-action="clap">👏 拍拍手</div>
-  <div class="item" data-action="sunglasses">😎 戴墨鏡</div>
-  <div class="item" data-action="idle">🎧 聽音樂</div>
-  <div class="item" data-action="tool_call">⌨ 打字</div>
+  <div class="item" data-action="coffee" id="m-coffee"></div>
+  <div class="item" data-action="clap" id="m-clap"></div>
+  <div class="item" data-action="sunglasses" id="m-sunglasses"></div>
+  <div class="item" data-action="idle" id="m-headphones"></div>
+  <div class="item" data-action="tool_call" id="m-typing"></div>
   <div class="sep"></div>
-  <div class="item" data-action="quit">❌ 離開</div>
+  <div class="item" data-action="lang:zh" id="lang-zh">🌐 中文</div>
+  <div class="item" data-action="lang:en" id="lang-en">🌐 English</div>
+  <div class="item" data-action="lang:ja" id="lang-ja">🌐 日本語</div>
+  <div class="sep"></div>
+  <div class="item" data-action="quit" id="m-quit"></div>
   <script>
     const { ipcRenderer } = require('electron');
+    const LANG = require('./lang');
+    const lang = new URLSearchParams(window.location.search).get('lang') || 'zh';
+    const T = LANG[lang].tray;
+
+    document.getElementById('m-coffee').textContent = T.coffee;
+    document.getElementById('m-clap').textContent = T.clap;
+    document.getElementById('m-sunglasses').textContent = T.sunglasses;
+    document.getElementById('m-headphones').textContent = T.headphones;
+    document.getElementById('m-typing').textContent = T.typing;
+    document.getElementById('m-quit').textContent = T.quit;
+
+    document.getElementById('lang-' + lang).classList.add('current');
+
     document.querySelectorAll('.item').forEach(el => {
       el.addEventListener('click', () => {
         ipcRenderer.send('tray-menu-action', el.dataset.action);

@@ -121,6 +121,9 @@
 <div id="name-tag"></div>
 <script>
 const { ipcRenderer } = require('electron');
+const LANG = require('./lang');
+const langCode = new URLSearchParams(window.location.search).get('lang') || 'zh';
+const T = LANG[langCode];
 
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -139,7 +142,7 @@ function renderNameTag(text) {
     nameTag.appendChild(span);
   });
 }
-renderNameTag('爪爪');
+renderNameTag(T.name);
 
 const NAME_BASE_Y = 98;
 const NAME_BASE_X = 42;
@@ -155,67 +158,7 @@ function positionNameAndSpeech(animName) {
 }
 
 // --- Speech bubble ---
-const SPEECH = {
-  typing: [
-    '寫程式中～',
-    '讓我想想...',
-    '嗯嗯...',
-    '認真工作中！',
-    '這段有點難...',
-    '快好了快好了',
-    '集中精神！',
-    '加油加油～',
-    '寫到一半了',
-    '思考中...',
-  ],
-  clapping: [
-    '完成了！',
-    '太棒了！',
-    '做得好～',
-    '又解決一個了！',
-  ],
-  sunglasses: [
-    '全部搞定😎',
-    '收工！',
-    '完美～',
-  ],
-  latte: [
-    '謝謝咖啡☕',
-    '好好喝～',
-    '有咖啡就有力氣！',
-  ],
-  headphones: [
-    '🎵～',
-    '等你回來～',
-    '聽歌中',
-    '休息一下～',
-  ],
-  google_service: [
-    '查 Google 資料～',
-    '翻翻抽屜...',
-    '找到了！',
-  ],
-  dizzy: [
-    '休息一下吧～',
-    '工作50分鐘了！',
-    '眼睛好花...',
-    '站起來動一動～',
-    '該休息囉！',
-  ],
-  rest: [
-    '爪爪不在座位上',
-    '桌上好安靜...',
-    '去哪了呢？',
-    '椅子還是溫的',
-  ],
-  restInterrupted: [
-    '不是說要休息嗎～',
-    '才剛坐下欸...',
-    '好吧好吧...',
-    '人類你不累嗎？',
-    '嗚…回來了啦',
-  ],
-};
+const SPEECH = T.speech;
 
 let speechTimer = null;
 let speechLoop = null;
@@ -238,15 +181,16 @@ function randomSpeech(animName) {
 function startRestCountdown() {
   restStartTime = Date.now();
   stopRestCountdown();
-  renderNameTag('爪爪去休息10分鐘');
+  renderNameTag(T.restTagInit);
   restCountdownTimer = setInterval(() => {
     if (currentAnim !== 'rest') { stopRestCountdown(); return; }
     const elapsed = Date.now() - restStartTime;
     const remaining = Math.max(0, REST_DURATION_MS - elapsed);
     const mins = Math.ceil(remaining / 60000);
     if (remaining <= 0) {
-      renderNameTag('爪爪回來了！');
+      renderNameTag(T.restTagBack);
       stopRestCountdown();
+      restInterrupted = false;
       workStartTime = Date.now();
       restReminderTriggered = false;
       setTimeout(() => {
@@ -255,7 +199,7 @@ function startRestCountdown() {
         }
       }, 3000);
     } else {
-      renderNameTag('爪爪去休息' + mins + '分鐘');
+      renderNameTag(T.restTag(mins));
     }
   }, 30000);
 }
@@ -269,7 +213,8 @@ function stopRestCountdown() {
 
 function endRest() {
   stopRestCountdown();
-  renderNameTag('爪爪');
+  restInterrupted = false;
+  renderNameTag(T.name);
   workStartTime = Date.now();
   restReminderTriggered = false;
 }
@@ -333,6 +278,7 @@ let restStartTime = 0;
 let restCountdownTimer = null;
 let grudgeMode = false;
 let lastToolCallTime = Date.now();
+let restInterrupted = false;
 
 let opacity = 1;
 let fadePhase = 'none';
@@ -397,7 +343,7 @@ function startLoop() {
   lastFrameTime = performance.now();
   requestAnimationFrame(tick);
   setTimeout(() => {
-    showSpeech('開工了！');
+    showSpeech(T.speech.startup);
     startTypingSpeechLoop();
   }, 2000);
 }
@@ -423,7 +369,7 @@ function tick(now) {
         startRestCountdown();
       } else {
         stopRestCountdown();
-        renderNameTag('爪爪');
+        renderNameTag(T.name);
         currentAnim = grudgeMode ? 'grudge' : 'typing';
         currentFrame = 0;
         lastFrameTime = now;
@@ -524,10 +470,16 @@ ipcRenderer.on('state-change', (event, state) => {
   const wasIdle = lastEvent.event === 'stop' || lastEvent.event === 'idle' || lastEvent.event === 'none';
   lastEvent = state;
   if (state.event === 'tool_call' || state.event === 'google_service') {
-    if (currentAnim === 'rest') {
-      endRest();
-      grudgeMode = true;
+    if (currentAnim === 'rest' && !restInterrupted) {
+      restInterrupted = true;
       randomSpeech('restInterrupted');
+      setTimeout(() => {
+        if (currentAnim === 'rest') {
+          endRest();
+          grudgeMode = true;
+          fadePhase = 'out';
+        }
+      }, 5000);
     } else if (wasIdle && grudgeMode) {
       const idleTime = Date.now() - lastToolCallTime;
       if (idleTime >= REST_DURATION_MS) exitGrudge();
@@ -562,15 +514,19 @@ function pctColor(p) {
 
 function updateUsageText(data) {
   usageEl.innerHTML = '';
-  const pct5 = data.five_hour;
+  let pct5 = data.five_hour;
   const sep = () => { const s = document.createElement('span'); s.textContent = ' | '; s.style.color = 'rgba(160,160,160,0.5)'; usageEl.appendChild(s); };
+
+  if (pct5 != null && data.five_hour_resets && data.five_hour_resets * 1000 <= Date.now()) {
+    pct5 = 0;
+  }
 
   if (pct5 != null) {
     const s = document.createElement('span');
     s.textContent = Math.round(pct5) + '%';
     s.style.color = pctColor(pct5);
     usageEl.appendChild(s);
-    if (data.five_hour_resets) {
+    if (data.five_hour_resets && data.five_hour_resets * 1000 > Date.now()) {
       sep();
       const t = document.createElement('span');
       t.textContent = formatResetTime(data.five_hour_resets);
@@ -601,24 +557,22 @@ setInterval(() => {
 
 
 // --- Click (poke) reaction ---
-const POKE_LINES = [
-  '幹嘛啦～',
-  '別戳我！',
-  '在工作欸！',
-  '嗚…',
-  '好癢！',
-  '再戳就咬你喔',
-  '？',
-  '做什麼啦～',
-];
+const POKE_LINES = T.speech.poke;
 let pokeShaking = false;
 
 function pokeReaction() {
   if (currentAnim === 'rest') {
-    endRest();
-    grudgeMode = true;
-    fadePhase = 'out';
-    randomSpeech('restInterrupted');
+    if (!restInterrupted) {
+      restInterrupted = true;
+      randomSpeech('restInterrupted');
+      setTimeout(() => {
+        if (currentAnim === 'rest') {
+          endRest();
+          grudgeMode = true;
+          fadePhase = 'out';
+        }
+      }, 5000);
+    }
     return;
   }
   showSpeech(POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]);
@@ -637,6 +591,7 @@ let dragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
 let dragMoved = false;
+let pokeTarget = false;
 
 document.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
@@ -644,6 +599,8 @@ document.addEventListener('mousedown', (e) => {
     dragMoved = false;
     dragStartX = e.screenX;
     dragStartY = e.screenY;
+    const r = canvas.getBoundingClientRect();
+    pokeTarget = (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom);
   }
 });
 
@@ -658,7 +615,7 @@ document.addEventListener('mousemove', (e) => {
 });
 
 document.addEventListener('mouseup', () => {
-  if (dragging && !dragMoved) pokeReaction();
+  if (dragging && !dragMoved && pokeTarget) pokeReaction();
   dragging = false;
 });
 </script>

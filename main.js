@@ -2,12 +2,31 @@ const { app, BrowserWindow, Tray, ipcMain, nativeImage, nativeTheme } = require(
 nativeTheme.themeSource = 'dark';
 const path = require('path');
 const fs = require('fs');
+const LANG = require('./lang');
 
 const STATE_DIR = path.join(process.env.LOCALAPPDATA, 'clawd');
 const STATE_FILE = path.join(STATE_DIR, 'state.json');
 const SPEECH_FILE = path.join(STATE_DIR, 'speech.json');
 const USAGE_FILE = path.join(STATE_DIR, 'usage.json');
+const CONFIG_FILE = path.join(STATE_DIR, 'config.json');
 
+function readLang() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    if (LANG[cfg.lang]) return cfg.lang;
+  } catch (e) {}
+  return 'zh';
+}
+
+function saveLang(lang) {
+  fs.mkdirSync(STATE_DIR, { recursive: true });
+  let cfg = {};
+  try { cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); } catch (e) {}
+  cfg.lang = lang;
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg));
+}
+
+let currentLang = readLang();
 let win = null;
 let tray = null;
 let menuWin = null;
@@ -28,7 +47,7 @@ function createWindow() {
     }
   });
 
-  win.loadFile(path.join(__dirname, 'index.html'));
+  win.loadFile(path.join(__dirname, 'index.html'), { query: { lang: currentLang } });
   pollState();
   stateWatcher = setInterval(pollState, 1000);
 }
@@ -75,7 +94,7 @@ function showTrayMenu(bounds) {
   }
 
   const menuWidth = 160;
-  const menuHeight = 222;
+  const menuHeight = 310;
   const x = Math.round(bounds.x + bounds.width / 2 - menuWidth / 2);
   const y = Math.round(bounds.y - menuHeight);
 
@@ -94,7 +113,7 @@ function showTrayMenu(bounds) {
     }
   });
 
-  menuWin.loadFile(path.join(__dirname, 'tray-menu.html'));
+  menuWin.loadFile(path.join(__dirname, 'tray-menu.html'), { query: { lang: currentLang } });
   menuWin.on('blur', () => {
     if (menuWin && !menuWin.isDestroyed()) {
       menuWin.close();
@@ -110,6 +129,13 @@ ipcMain.on('tray-menu-action', (event, action) => {
   }
   if (action === 'quit') {
     app.quit();
+  } else if (action.startsWith('lang:')) {
+    const lang = action.split(':')[1];
+    if (LANG[lang]) {
+      saveLang(lang);
+      app.relaunch();
+      app.exit(0);
+    }
   } else {
     writeState(action);
   }
@@ -118,7 +144,7 @@ ipcMain.on('tray-menu-action', (event, action) => {
 function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   tray = new Tray(nativeImage.createFromPath(iconPath));
-  tray.setToolTip('爪爪 — Claude Code Companion');
+  tray.setToolTip(LANG[currentLang].tooltip);
   tray.on('click', (event, bounds) => showTrayMenu(bounds));
   tray.on('right-click', (event, bounds) => showTrayMenu(bounds));
 }
