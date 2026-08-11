@@ -86,12 +86,20 @@
     border-color: rgba(0, 0, 0, 0.75) transparent transparent;
   }
 
+  @keyframes pokeShake {
+    0%, 100% { transform: translateX(-50%); }
+    20% { transform: translateX(-50%) rotate(-8deg); }
+    40% { transform: translateX(-50%) rotate(8deg); }
+    60% { transform: translateX(-50%) rotate(-5deg); }
+    80% { transform: translateX(-50%) rotate(5deg); }
+  }
+
   #usage {
     position: absolute;
     bottom: 2px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 10px;
+    font-size: 12px;
     font-family: "Consolas", "Courier New", monospace;
     color: rgba(255, 255, 255, 0.7);
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
@@ -182,6 +190,11 @@ const SPEECH = {
     '聽歌中',
     '休息一下～',
   ],
+  google_service: [
+    '查 Google 資料～',
+    '翻翻抽屜...',
+    '找到了！',
+  ],
 };
 
 let speechTimer = null;
@@ -220,10 +233,12 @@ function stopTypingSpeechLoop() {
 
 // --- Sprite definitions ---
 const ANIMS = {
-  typing:     { src: 'assets/typing.png',      frameW: 320, frameH: 320, frames: 23, fps: 8, loop: true, nameY: 0, nameX: 0 },
+  typing:     { src: 'assets/typing_cabinet.png', frameW: 160, frameH: 160, frames: 27, fps: 8, loop: true, nameY: 0, nameX: 0,
+                frameSequence: [0,1,2,3,4,5,6,7,8,9,10,11,21,22,23,24,25,26] },
+  google_service: { src: 'assets/typing_cabinet.png', frameW: 160, frameH: 160, frames: 27, fps: 8, loop: false, repeats: 1, nameY: 0, nameX: 0 },
   clapping:   { src: 'assets/clapping.png',    frameW: 256, frameH: 256, frames: 11, fps: 10, loop: false, nameY: 33, nameX: 8 },
   latte:      { src: 'assets/latte.png',       frameW: 160, frameH: 160, frames: 45, fps: 10, loop: false, repeats: 1, nameY: 0, nameX: 0 },
-  sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, nameY: 27, nameX: 8 },
+  sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, repeats: 1, nameY: 27, nameX: 8 },
   headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108, nameY: 15, nameX: 0 },
 };
 
@@ -254,6 +269,7 @@ function resolveAnimation() {
     if (ev === 'coffee') return 'latte';
     if (ev === 'clap' || ev === 'stop') return 'clapping';
     if (ev === 'idle') return 'headphones';
+    if (ev === 'google_service') return 'google_service';
     const age = Date.now() - lastEvent.timestamp;
     if (age > IDLE_TIMEOUT) return 'headphones';
   }
@@ -343,12 +359,13 @@ function tick(now) {
   }
 
   const interval = 1000 / anim.fps;
+  const totalFrames = anim.frameSequence ? anim.frameSequence.length : anim.frames;
   if (now - lastFrameTime >= interval) {
     lastFrameTime = now;
     if (anim.loop) {
-      currentFrame = (currentFrame + 1) % anim.frames;
+      currentFrame = (currentFrame + 1) % totalFrames;
     } else if (playState === 'playing') {
-      if (currentFrame < anim.frames - 1) {
+      if (currentFrame < totalFrames - 1) {
         currentFrame++;
       } else if (anim.tailFrom !== undefined) {
         playState = 'tailing';
@@ -365,7 +382,7 @@ function tick(now) {
         }
       }
     } else if (playState === 'tailing') {
-      if (currentFrame < anim.frames - 1) {
+      if (currentFrame < totalFrames - 1) {
         currentFrame++;
       } else {
         tailLoops++;
@@ -381,7 +398,8 @@ function tick(now) {
 
   ctx.clearRect(0, 0, 128, 128);
   ctx.globalAlpha = opacity;
-  const sx = currentFrame * anim.frameW;
+  const actualFrame = anim.frameSequence ? anim.frameSequence[currentFrame] : currentFrame;
+  const sx = actualFrame * anim.frameW;
   const rs = anim.renderSize || 128;
   const offset = (128 - rs) / 2;
   ctx.drawImage(images[currentAnim], sx, 0, anim.frameW, anim.frameH, offset, offset, rs, rs);
@@ -415,17 +433,35 @@ function formatResetTime(resetEpoch) {
   return mins + 'm';
 }
 
+function pctColor(p) {
+  return p >= 80 ? 'rgba(255,100,100,0.9)' : p >= 30 ? 'rgba(255,200,100,0.85)' : 'rgba(130,230,150,0.85)';
+}
+
 function updateUsageText(data) {
-  const parts = [];
+  usageEl.innerHTML = '';
   const pct5 = data.five_hour;
+  const sep = () => { const s = document.createElement('span'); s.textContent = ' | '; s.style.color = 'rgba(160,160,160,0.5)'; usageEl.appendChild(s); };
+
   if (pct5 != null) {
-    parts.push(Math.round(pct5) + '%');
-    if (data.five_hour_resets) parts.push(formatResetTime(data.five_hour_resets));
+    const s = document.createElement('span');
+    s.textContent = Math.round(pct5) + '%';
+    s.style.color = pctColor(pct5);
+    usageEl.appendChild(s);
+    if (data.five_hour_resets) {
+      sep();
+      const t = document.createElement('span');
+      t.textContent = formatResetTime(data.five_hour_resets);
+      t.style.color = 'rgba(160,160,160,0.7)';
+      usageEl.appendChild(t);
+    }
   }
-  if (data.seven_day != null) parts.push('7d ' + Math.round(data.seven_day) + '%');
-  usageEl.textContent = parts.join(' | ');
-  const maxPct = Math.max(pct5 || 0, data.seven_day || 0);
-  usageEl.style.color = maxPct >= 80 ? 'rgba(255,100,100,0.9)' : maxPct >= 50 ? 'rgba(255,200,100,0.85)' : 'rgba(255,255,255,0.7)';
+  if (data.seven_day != null) {
+    if (usageEl.children.length > 0) sep();
+    const s = document.createElement('span');
+    s.textContent = '7d ' + Math.round(data.seven_day) + '%';
+    s.style.color = pctColor(data.seven_day);
+    usageEl.appendChild(s);
+  }
   usageEl.classList.add('visible');
 }
 
@@ -440,14 +476,41 @@ setInterval(() => {
   if (usageData && usageData.five_hour_resets) updateUsageText(usageData);
 }, 60000);
 
+// --- Click (poke) reaction ---
+const POKE_LINES = [
+  '幹嘛啦～',
+  '別戳我！',
+  '在工作欸！',
+  '嗚…',
+  '好癢！',
+  '再戳就咬你喔',
+  '？',
+  '做什麼啦～',
+];
+let pokeShaking = false;
+
+function pokeReaction() {
+  showSpeech(POKE_LINES[Math.floor(Math.random() * POKE_LINES.length)]);
+  if (!pokeShaking) {
+    pokeShaking = true;
+    canvas.style.animation = 'pokeShake 0.3s ease';
+    canvas.addEventListener('animationend', () => {
+      canvas.style.animation = '';
+      pokeShaking = false;
+    }, { once: true });
+  }
+}
+
 // --- Drag support ---
 let dragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
+let dragMoved = false;
 
 document.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
     dragging = true;
+    dragMoved = false;
     dragStartX = e.screenX;
     dragStartY = e.screenY;
   }
@@ -457,12 +520,14 @@ document.addEventListener('mousemove', (e) => {
   if (!dragging) return;
   const dx = e.screenX - dragStartX;
   const dy = e.screenY - dragStartY;
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true;
   dragStartX = e.screenX;
   dragStartY = e.screenY;
   ipcRenderer.send('window-drag', { dx, dy });
 });
 
 document.addEventListener('mouseup', () => {
+  if (dragging && !dragMoved) pokeReaction();
   dragging = false;
 });
 </script>
