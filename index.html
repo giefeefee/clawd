@@ -202,6 +202,11 @@ const SPEECH = {
     '站起來動一動～',
     '該休息囉！',
   ],
+  rest: [
+    'zzZ...',
+    '好睡～',
+    '...呼...',
+  ],
 };
 
 let speechTimer = null;
@@ -248,6 +253,7 @@ const ANIMS = {
   sunglasses: { src: 'assets/sunglasses.png',  frameW: 128, frameH: 128, frames: 13, fps: 8, loop: false, repeats: 1, nameY: 27, nameX: 8 },
   headphones: { src: 'assets/headphones.png',  frameW: 128, frameH: 128, frames: 6,  fps: 6, loop: false, renderSize: 108, nameY: 15, nameX: 0 },
   dizzy:      { src: 'assets/dizzy.png',       frameW: 160, frameH: 160, frames: 8,  fps: 6, loop: false, repeats: 1, nameY: 0, nameX: 0 },
+  rest:       { src: 'assets/rest.png',       frameW: 160, frameH: 160, frames: 1,  fps: 1, loop: true, nameY: 0, nameX: 0 },
 };
 
 // --- State machine ---
@@ -286,6 +292,8 @@ function resolveAnimation() {
     const age = Date.now() - lastEvent.timestamp;
     if (age > IDLE_TIMEOUT) return 'headphones';
   }
+
+  if (currentAnim === 'rest') return 'rest';
 
   if (!restReminderTriggered && Date.now() - workStartTime >= REST_REMINDER_MS) {
     restReminderTriggered = true;
@@ -333,18 +341,27 @@ function tick(now) {
       fadePhase = 'in';
       consumedTimestamp = lastEvent.timestamp;
       if (currentAnim === 'dizzy') {
-        workStartTime = Date.now();
-        restReminderTriggered = false;
+        currentAnim = 'rest';
+        currentFrame = 0;
+        lastFrameTime = now;
+        oneShotDone = false;
+        oneShotLoops = 0;
+        playState = 'playing';
+        tailLoops = 0;
+        positionNameAndSpeech('rest');
+        randomSpeech('rest');
+        stopTypingSpeechLoop();
+      } else {
+        currentAnim = 'typing';
+        currentFrame = 0;
+        lastFrameTime = now;
+        oneShotDone = false;
+        oneShotLoops = 0;
+        playState = 'playing';
+        tailLoops = 0;
+        positionNameAndSpeech('typing');
+        startTypingSpeechLoop();
       }
-      currentAnim = 'typing';
-      currentFrame = 0;
-      lastFrameTime = now;
-      oneShotDone = false;
-      oneShotLoops = 0;
-      playState = 'playing';
-      tailLoops = 0;
-      positionNameAndSpeech('typing');
-      startTypingSpeechLoop();
     }
   } else if (fadePhase === 'in') {
     opacity += FADE_IN_SPEED;
@@ -434,7 +451,7 @@ function tick(now) {
 ipcRenderer.on('state-change', (event, state) => {
   const wasIdle = lastEvent.event === 'stop' || lastEvent.event === 'idle' || lastEvent.event === 'none';
   lastEvent = state;
-  if (wasIdle && (state.event === 'tool_call' || state.event === 'google_service')) {
+  if ((wasIdle || currentAnim === 'rest') && (state.event === 'tool_call' || state.event === 'google_service')) {
     workStartTime = Date.now();
     restReminderTriggered = false;
   }
