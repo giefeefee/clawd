@@ -13,7 +13,7 @@
 |------|------|------|
 | tool_call（工作中） | 打字 | assets/typing.png（23幀，320x320，循環） |
 | stop / clap（完成） | 拍手 | assets/clapping.png（11幀，256x256，播2次淡出） |
-| sunglasses（全部完成） | 墨鏡 | assets/sunglasses.png（13幀，128x128，播1次淡出） |
+| sunglasses（`git commit` 時自動） | 墨鏡 | assets/sunglasses.png（13幀，128x128，播1次淡出） |
 | idle / 閒置60秒 | 耳機聽音樂 | assets/headphones.png（6幀，128x128，播2輪淡出，renderSize 108） |
 | coffee（給咖啡） | 拿鐵 | assets/latte.png（45幀，160x160，播1次淡出） |
 
