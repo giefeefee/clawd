@@ -29,7 +29,7 @@ Clawd reads a tiny JSON file (`state.json`) once per second. Claude Code's PostT
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/user/clawd.git
+git clone https://github.com/giefeefee/clawd.git
 cd clawd
 npm install
 
