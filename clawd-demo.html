@@ -147,10 +147,11 @@ h1 { font-size: 28px; color: var(--accent); margin-bottom: 4px; }
       <div class="hint" id="hint">Click Clawd to poke him!</div>
       <div class="controls">
         <div class="controls-label" id="controls-label">Animations</div>
-        <div class="btn-grid">
+        <div class="btn-grid" style="grid-template-columns:repeat(2,1fr)">
           <button class="anim-btn active" onclick="triggerAnim('typing')" id="btn-typing"><span class="emoji">⌨️</span><span class="label">Typing</span></button>
           <button class="anim-btn" onclick="triggerAnim('clapping')" id="btn-clapping"><span class="emoji">👏</span><span class="label">Clap</span></button>
           <button class="anim-btn" onclick="triggerAnim('headphones')" id="btn-headphones"><span class="emoji">🎧</span><span class="label">Music</span></button>
+          <button class="anim-btn" onclick="triggerAnim('dizzy')" id="btn-dizzy"><span class="emoji">😵</span><span class="label">Rest</span></button>
         </div>
       </div>
     </div>
